@@ -10,7 +10,7 @@ TELEGRAM_BOT_TOKEN = "7898328289:AAGJF0EUAxizLb9I19QFOmXK8c0TM2rlnqI"
 TELEGRAM_CHAT_ID = "772723548"
 
 def fetch_fear_and_greed():
-    url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/"
+    url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/2022-01-01"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
     }
@@ -80,7 +80,7 @@ def calculate_macd(df, span_short=12, span_long=26, span_signal=9):
     return df
 
 # Function to calculate divergence confidence
-def calculate_divergence_confidence(df, i, rsi_bull_threshold=70, rsi_bear_threshold=30):
+def calculate_divergence_confidence(df, i, rsi_bull_threshold=60, rsi_bear_threshold=40):
     price_diff = abs(df['y'][i] - df['y'][i-1])
     rsi_diff = abs(df['rsi'][i] - df['rsi'][i-1])
     magnitude_confidence = price_diff / (rsi_diff if rsi_diff != 0 else 1)  # Avoid division by zero
@@ -107,10 +107,10 @@ def calculate_divergence_confidence(df, i, rsi_bull_threshold=70, rsi_bear_thres
 def detect_divergences(df):
     divergences = []
     for i in range(1, len(df)):
-        if df['rsi'][i] < 30 and df['y'][i] > df['y'][i-1] and df['rsi'][i] > df['rsi'][i-1]:
+        if df['rsi'][i] < 40 and df['y'][i] > df['y'][i-1] and df['rsi'][i] > df['rsi'][i-1]:
             confidence = calculate_divergence_confidence(df, i)
             divergences.append((df['timestamp'][i], 'Bullish Divergence', df['y'][i], confidence))
-        elif df['rsi'][i] > 70 and df['y'][i] < df['y'][i-1] and df['rsi'][i] < df['rsi'][i-1]:
+        elif df['rsi'][i] > 60 and df['y'][i] < df['y'][i-1] and df['rsi'][i] < df['rsi'][i-1]:
             confidence = calculate_divergence_confidence(df, i)
             divergences.append((df['timestamp'][i], 'Bearish Divergence', df['y'][i], confidence))
     return divergences
@@ -120,40 +120,59 @@ def divergence_within_5_days(divergences):
     today = dt.datetime.now()
     return any((today - pd.to_datetime(divergence[0])).days <= 5 for divergence in divergences)
 
-# Function to plot the chart
+# Updated function to plot the chart with bubble-style annotations
 def plot_chart(df, divergences):
     plt.figure(figsize=(12, 8))
 
-    # Plot Fear and Greed Index
-    plt.plot(df['timestamp'], df['y'], label='Fear and Greed Index', color='blue', marker='o')
+    # Determine line color based on recent divergences
+    recent_bullish = any(d[1] == 'Bullish Divergence' and (dt.datetime.now() - pd.to_datetime(d[0])).days <= 5 for d in divergences)
+    recent_bearish = any(d[1] == 'Bearish Divergence' and (dt.datetime.now() - pd.to_datetime(d[0])).days <= 5 for d in divergences)
 
-    # Plot EMA
-    plt.plot(df['timestamp'], df['ema_9'], label='9-day EMA', color='orange', linestyle='--')
-    plt.plot(df['timestamp'], df['ema_26'], label='26-day EMA', color='purple', linestyle='--')
+    # Set line color based on the latest divergence within 5 days
+    line_color = 'green' if recent_bullish else 'red' if recent_bearish else 'gray'
+
+    # Plot Fear and Greed Index line
+    plt.plot(df['timestamp'], df['y'], color=line_color)
 
     # Plot Bollinger Bands
-    plt.fill_between(df['timestamp'], df['upper_band'], df['lower_band'], color='gray', alpha=0.2, label='Bollinger Bands')
+    plt.fill_between(df['timestamp'], df['upper_band'], df['lower_band'], color='gray', alpha=0.2)
 
-    # Plot MACD
-    plt.plot(df['timestamp'], df['macd'], label='MACD Line', color='green')
-    plt.plot(df['timestamp'], df['macd_signal'], label='MACD Signal Line', color='red')
+    # Plot MACD and MACD Signal Line
+    plt.plot(df['timestamp'], df['macd'], color='green')
+    plt.plot(df['timestamp'], df['macd_signal'], color='red')
 
-    # Plot divergences
+    # Add MACD Zero Line
+    plt.axhline(0, color='black', linestyle='--')
+
+    # Mark all divergences, but only add bubble annotations within the past 5 days
     for divergence in divergences:
-        plt.scatter(divergence[0], divergence[2], label=f"{divergence[1]} (Confidence: {divergence[3]:.2f}%)", 
-                    color='green' if divergence[1].startswith('Bullish') else 'red', s=100)
+        plt.scatter(divergence[0], divergence[2], 
+                    color='green' if divergence[1].startswith('Bullish') else 'red', s=50)
+        
+        # Annotate only if the divergence is within the last 5 days
+        days_since_divergence = (dt.datetime.now() - pd.to_datetime(divergence[0])).days
+        if days_since_divergence <= 5:
+            plt.annotate(f"{divergence[1]} ({divergence[3]:.2f}%)",
+                         xy=(divergence[0], divergence[2] * 1.05),  # Position above the point
+                         ha='center', fontsize=8, color='black', weight='bold',
+                         bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', edgecolor='black'))
 
-    # Formatting chart
-    plt.legend()
-    plt.title('Fear and Greed Index with Technical Indicators and Divergences')
+    # Get the current value of the Fear and Greed Index
+    current_value = df['y'].iloc[-1]  # Get the latest value
+
+    # Formatting chart with current date, time, and value
+    current_date = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    plt.title(f'Fear and Greed Index: Current Value {current_value}\n{current_date}')
     plt.xlabel('Date')
     plt.ylabel('Fear and Greed Index')
 
     # Save chart to BytesIO to send via Telegram
     buf = BytesIO()
     plt.savefig(buf, format='png')
+    #plt.show()
     buf.seek(0)
     return buf
+
 
 # Main function to execute the process
 def main():
