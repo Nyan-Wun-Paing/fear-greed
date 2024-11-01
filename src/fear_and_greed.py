@@ -171,7 +171,6 @@ def plot_chart(df, divergences):
     return buf
 
 
-
 # Main function to execute the process
 def main():
     # Fetch Fear and Greed Index data
