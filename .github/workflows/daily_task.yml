@@ -1,6 +1,11 @@
 name: Daily Fear and Greed Task
 
 on:
+    # Runs on push to any of the below branches
+  push:
+    branches:
+      - master
+      - main
   # Runs on push to any of the below branches
   schedule:
     - cron: '30 12,13,14 * * 1-5' 
