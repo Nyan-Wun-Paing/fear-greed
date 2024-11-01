@@ -8,7 +8,7 @@ import matplotlib.dates as mdates
 
 # Telegram configuration
 TELEGRAM_BOT_TOKEN = "7898328289:AAGJF0EUAxizLb9I19QFOmXK8c0TM2rlnqI"
-TELEGRAM_CHAT_ID = "772723548"
+TELEGRAM_CHAT_ID = "-4520793526"
 
 def fetch_fear_and_greed():
     url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/2022-01-01"
