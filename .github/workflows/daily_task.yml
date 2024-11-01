@@ -3,7 +3,7 @@ name: Daily Fear and Greed Task
 on:
   # Runs on push to any of the below branches
   schedule:
-    - cron: '0 * * * *'  # This will run daily at 10 AM UTC
+    - cron: '30 12,13,14 * * 1-5' 
 
 jobs:
   run-task:
