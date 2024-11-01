@@ -7,7 +7,7 @@ on:
       - master
       - main
   schedule:
-    - cron: '1 * * * *'  # This will run daily at 10 AM UTC
+    - cron: '5 * * * *'  # This will run daily at 10 AM UTC
 
 jobs:
   run-task:
