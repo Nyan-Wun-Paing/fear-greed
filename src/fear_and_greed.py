@@ -112,26 +112,7 @@ def detect_divergences(df):
             divergences.append((df['timestamp'][i], 'Bearish Divergence', df['y'][i], confidence))
     return divergences
 
-# Function to check if divergence is within the last 5 days
-def divergence_within_5_days(divergences):
-    today = dt.datetime.now()
-    return any((today - pd.to_datetime(divergence[0])).days <= 5 for divergence in divergences)
-
-# Detect divergences based on RSI with Fear and Greed thresholds
-def detect_divergences(df):
-    divergences = []
-    for i in range(1, len(df)):
-        # Bullish Divergence when Fear and Greed value is below 40
-        if df['rsi'][i] < 40 and df['y'][i] > df['y'][i-1] and df['rsi'][i] > df['rsi'][i-1] and df['y'][i] < 40:
-            confidence = calculate_divergence_confidence(df, i)
-            divergences.append((df['timestamp'][i], 'Bullish Divergence', df['y'][i], confidence))
-        # Bearish Divergence when Fear and Greed value is above 60
-        elif df['rsi'][i] > 60 and df['y'][i] < df['y'][i-1] and df['rsi'][i] < df['rsi'][i-1] and df['y'][i] > 60:
-            confidence = calculate_divergence_confidence(df, i)
-            divergences.append((df['timestamp'][i], 'Bearish Divergence', df['y'][i], confidence))
-    return divergences
-
-# Updated function to plot the chart with vertical date labels and filtered divergences
+# Updated function to plot the chart with blue-colored, whole-number confidence level annotations
 def plot_chart(df, divergences):
     plt.figure(figsize=(12, 8))
 
@@ -155,7 +136,7 @@ def plot_chart(df, divergences):
     # Add MACD Zero Line
     plt.axhline(0, color='black', linestyle='--')
 
-    # Mark divergences
+    # Mark divergences with blue, whole-number confidence level annotations
     for divergence in divergences:
         plt.scatter(divergence[0], divergence[2], 
                     color='green' if divergence[1].startswith('Bullish') else 'red', s=50)
@@ -163,17 +144,19 @@ def plot_chart(df, divergences):
         # Annotate only if the divergence is within the last 5 days
         days_since_divergence = (dt.datetime.now() - pd.to_datetime(divergence[0])).days
         if days_since_divergence <= 5:
-            plt.annotate(f"{divergence[1]} ({divergence[3]:.2f}%)",
+            # Format confidence level as a whole number in blue color
+            confidence_text = f"{divergence[1]} ({int(divergence[3])}%)"
+            plt.annotate(confidence_text,
                          xy=(divergence[0], divergence[2] * 1.05),  # Position above the point
-                         ha='center', fontsize=8, color='black', weight='bold',
+                         ha='center', fontsize=8, color='blue', weight='bold',
                          bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', edgecolor='black'))
 
-    # Get the current value of the Fear and Greed Index
-    current_value = df['y'].iloc[-1]
+    # Get the current value of the Fear and Greed Index as a whole number
+    current_value = int(df['y'].iloc[-1])  # Round to whole number
 
-    # Formatting chart with current date, time, and value
+    # Formatting chart with current date, time, and value in red
     current_date = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    plt.title(f'Fear and Greed Index: Current Value {current_value}\n{current_date}')
+    plt.title(f'Fear and Greed Index: Current Value {current_value}\n{current_date}', color='red')
     plt.xlabel('Date')
     plt.ylabel('Fear and Greed Index')
 
@@ -182,9 +165,11 @@ def plot_chart(df, divergences):
 
     # Save chart to BytesIO to send via Telegram
     buf = BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300)
+    #plt.show()
     buf.seek(0)
     return buf
+
 
 
 # Main function to execute the process
