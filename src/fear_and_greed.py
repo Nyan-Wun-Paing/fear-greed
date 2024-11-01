@@ -9,7 +9,6 @@ import matplotlib.dates as mdates
 # Telegram configuration
 TELEGRAM_BOT_TOKEN = "7898328289:AAGJF0EUAxizLb9I19QFOmXK8c0TM2rlnqI"
 TELEGRAM_CHAT_ID = "-4520793526"
-
 def fetch_fear_and_greed():
     url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/2022-01-01"
     headers = {
@@ -112,6 +111,25 @@ def detect_divergences(df):
             divergences.append((df['timestamp'][i], 'Bearish Divergence', df['y'][i], confidence))
     return divergences
 
+# Function to check if divergence is within the last 5 days
+def divergence_within_5_days(divergences):
+    today = dt.datetime.now()
+    return any((today - pd.to_datetime(divergence[0])).days <= 5 for divergence in divergences)
+
+# Detect divergences based on RSI with Fear and Greed thresholds
+def detect_divergences(df):
+    divergences = []
+    for i in range(1, len(df)):
+        # Bullish Divergence when Fear and Greed value is below 40
+        if df['rsi'][i] < 40 and df['y'][i] > df['y'][i-1] and df['rsi'][i] > df['rsi'][i-1] and df['y'][i] < 40:
+            confidence = calculate_divergence_confidence(df, i)
+            divergences.append((df['timestamp'][i], 'Bullish Divergence', df['y'][i], confidence))
+        # Bearish Divergence when Fear and Greed value is above 60
+        elif df['rsi'][i] > 60 and df['y'][i] < df['y'][i-1] and df['rsi'][i] < df['rsi'][i-1] and df['y'][i] > 60:
+            confidence = calculate_divergence_confidence(df, i)
+            divergences.append((df['timestamp'][i], 'Bearish Divergence', df['y'][i], confidence))
+    return divergences
+
 # Updated function to plot the chart with blue-colored, whole-number confidence level annotations
 def plot_chart(df, divergences):
     plt.figure(figsize=(12, 8))
@@ -169,7 +187,6 @@ def plot_chart(df, divergences):
     #plt.show()
     buf.seek(0)
     return buf
-
 
 # Main function to execute the process
 def main():
