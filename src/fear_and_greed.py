@@ -103,7 +103,7 @@ def calculate_divergence_confidence(df, i, rsi_bull_threshold=60, rsi_bear_thres
 def detect_divergences(df):
     divergences = []
     for i in range(1, len(df)):
-        if df['rsi'][i] < 40 and df['y'][i] > df['y'][i-1] and df['rsi'][i] > df['rsi'][i-1]:
+        if df['rsi'][i] < 45 and df['y'][i] > df['y'][i-1] and df['rsi'][i] > df['rsi'][i-1]:
             confidence = calculate_divergence_confidence(df, i)
             divergences.append((df['timestamp'][i], 'Bullish Divergence', df['y'][i], confidence))
         elif df['rsi'][i] > 60 and df['y'][i] < df['y'][i-1] and df['rsi'][i] < df['rsi'][i-1]:
