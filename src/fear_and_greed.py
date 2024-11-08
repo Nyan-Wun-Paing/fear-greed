@@ -188,21 +188,38 @@ def divergence_within_5_days(divergences):
 
 def plot_chart(df, divergences):
     plt.figure(figsize=(12, 8))
-    plt.plot(df['timestamp'], df['value'], color='gray')
+    
+    recent_bullish = any(d[1] == 'Bullish Divergence' and (dt.datetime.now() - pd.to_datetime(d[0])).days <= 5 for d in divergences)
+    recent_bearish = any(d[1] == 'Bearish Divergence' and (dt.datetime.now() - pd.to_datetime(d[0])).days <= 5 for d in divergences)
+    line_color = 'darkseagreen' if recent_bullish else 'salmon' if recent_bearish else 'black'    # Plot Fear and Greed Index line
+    plt.plot(df['timestamp'], df['y'], color=line_color)
+
+    # Plot Bollinger Bands
+    plt.fill_between(df['timestamp'], df['upper_band'], df['lower_band'], color='gray', alpha=0.2)
 
     for timestamp, label, value, confidence in divergences:
-        color = 'blue' if 'Bullish' in label else 'orange'
+        color = 'forestgreen' if 'Bullish' in label else 'firebrick'
         plt.scatter(timestamp, value, color=color, s=50, label=label)
         plt.text(timestamp, value, f"{label}\nConf: {int(confidence)}%", color=color, fontsize=8)
 
-    plt.xlabel("Date")
-    plt.ylabel("Fear and Greed Index")
-    plt.title("Fear and Greed Index with Divergences")
-    plt.grid()
-    plt.tight_layout()
+    # Plot MACD and MACD Signal Line
+    plt.plot(df['timestamp'], df['macd'], color='green')
+    plt.plot(df['timestamp'], df['macd_signal'], color='red')
+    plt.axhline(0, color='black', linestyle='--')
 
+    # Get the current value of the Fear and Greed Index as a whole number
+    current_value = int(df['y'].iloc[-1])  # Round to whole number
+
+    # Formatting chart with current date, time, and value in red
+    current_date = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    plt.title(f'Fear and Greed Index: Current Value {current_value}\n{current_date}', color='red')
+    plt.xlabel('Date')
+    plt.ylabel('Fear and Greed Index')
+
+    # Rotate date labels vertically
+    plt.xticks(rotation=90)
     img_bytes = BytesIO()
-    plt.savefig(img_bytes, format='png')
+    plt.savefig(img_bytes, format='png', dpi=300)
     img_bytes.seek(0)
     return img_bytes
 
