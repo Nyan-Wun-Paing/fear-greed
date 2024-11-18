@@ -8,7 +8,7 @@ on:
      # - main
   # Runs on push to any of the below branches
   schedule:
-    - cron: '45 13,14,15 * * 1-5' 
+    - cron: '55 13,14,15 * * 1-5' 
 
 jobs:
   run-task:
