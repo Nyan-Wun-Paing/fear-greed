@@ -11,7 +11,7 @@ This project tracks CNN's Fear and Greed Index, applies technical indicators suc
 ## Setup
 1. Clone the repository:
     ```
-    git clone https://github.com/your-username/fear-greed-index-tracker.git
+    git clone https://github.com/your-Nyan-Wun-Paing/fear-greed-index-tracker.git
     cd fear-greed-index-tracker
     ```
 
