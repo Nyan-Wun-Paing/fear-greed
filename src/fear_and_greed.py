@@ -20,7 +20,7 @@ try:
     TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
     TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
      
-    print("Telegram Bot Key found in environment variables.")
+    print(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
     
 except KeyError:
     # If not found, try to load it from the .env file
