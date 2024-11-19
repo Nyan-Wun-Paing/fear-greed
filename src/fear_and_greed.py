@@ -5,10 +5,41 @@ import matplotlib.pyplot as plt
 import datetime as dt
 from io import BytesIO
 import matplotlib.dates as mdates
+import os
+from dotenv import load_dotenv
 
-# Telegram configuration
-TELEGRAM_BOT_TOKEN = "7898328289:AAGJF0EUAxizLb9I19QFOmXK8c0TM2rlnqI"
-TELEGRAM_CHAT_ID = "-4520793526"
+"""
+Loads Telegram Bot Token and Chat ID from environment variables or .env file.
+Raises KeyError if credentials are not found.
+"""
+# Load .env file (if it exists)
+load_dotenv()
+
+try:
+    # First, check for the key in environment variables (e.g., from GitHub Actions)
+    TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+    TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+
+    print("Telegram Bot Key found in environment variables.")
+    
+except KeyError:
+    # If not found, try to load it from the .env file
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', None)
+    TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', None)
+
+    if TELEGRAM_CHAT_ID and TELEGRAM_BOT_TOKEN:
+        print("Telegram Bot Key found in .env file.")
+    else:
+        # Raise an error if the key is not found in both places
+        raise KeyError("Error: Telegram Bot Key not found in environment variables or .env file.")
+
+"""
+    Fetches the historical Fear and Greed Index data from CNN.
+    Returns:
+        pd.DataFrame: DataFrame containing the timestamp and value columns for Fear and Greed Index.
+    Raises:
+        Exception: If data retrieval fails or no historical data is found.
+"""
 
 def fetch_fear_and_greed():
     url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata/2022-01-01"
@@ -32,10 +63,25 @@ def fetch_fear_and_greed():
     else:
         raise Exception("No historical data found in the response")
 
+"""
+    Sends a text message via Telegram.
+    Args:
+        bot_token (str): Telegram Bot Token.
+        chat_id (str): Telegram Chat ID.
+        message (str): Text message to send.
+"""
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
     requests.post(url, json=payload)
+
+"""
+    Sends an image (plot) via Telegram.
+    Args:
+        bot_token (str): Telegram Bot Token.
+        chat_id (str): Telegram Chat ID.
+        image_bytes (BytesIO): Image data in byte format.
+"""
 
 def send_telegram_image(image_bytes):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
@@ -43,11 +89,26 @@ def send_telegram_image(image_bytes):
     data = {'chat_id': TELEGRAM_CHAT_ID}
     requests.post(url, files=files, data=data)
 
-# Function to calculate EMA
+"""
+    Calculates Exponential Moving Average (EMA) for the given DataFrame.
+    Args:
+        df (pd.DataFrame): DataFrame containing the 'value' column.
+        span (int): Span for EMA calculation.
+    Returns:
+        pd.Series: Series containing EMA values.
+"""
 def calculate_ema(df, span):
     return df['value'].ewm(span=span, adjust=False).mean()
 
-# Function to calculate Bollinger Bands
+"""
+    Calculates Bollinger Bands for the given DataFrame.
+    Args:
+        df (pd.DataFrame): DataFrame containing the 'value' column.
+        window (int): Window size for SMA and standard deviation.
+        num_std (int): Number of standard deviations for upper/lower bands.
+    Returns:
+        pd.DataFrame: DataFrame with additional columns for SMA, upper_band, and lower_band.
+"""
 def calculate_bollinger_bands(df, window=20, num_std=2):
     df['sma'] = df['value'].rolling(window=window).mean()
     df['std'] = df['value'].rolling(window=window).std()
@@ -55,7 +116,14 @@ def calculate_bollinger_bands(df, window=20, num_std=2):
     df['lower_band'] = df['sma'] - (num_std * df['std'])
     return df
 
-# Function to calculate RSI
+"""
+    Calculates Relative Strength Index (RSI) for the given DataFrame.
+    Args:
+        df (pd.DataFrame): DataFrame containing the 'value' column.
+        period (int): Number of periods for RSI calculation.
+    Returns:
+        pd.DataFrame: DataFrame with an additional column for RSI.
+"""
 def calculate_rsi(df, period=14):
     delta = df['value'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -64,7 +132,16 @@ def calculate_rsi(df, period=14):
     df['rsi'] = 100 - (100 / (1 + rs))
     return df
 
-# Function to calculate MACD and Histogram
+"""
+    Calculates MACD and MACD Signal Line for the given DataFrame.
+    Args:
+        df (pd.DataFrame): DataFrame containing the 'value' column.
+        span_short (int): Short-term EMA span for MACD calculation.
+        span_long (int): Long-term EMA span for MACD calculation.
+        span_signal (int): Signal line EMA span.
+    Returns:
+        pd.DataFrame: DataFrame with additional columns for MACD and MACD Signal Line.
+"""
 def calculate_macd(df, span_short=12, span_long=26, span_signal=9):
     df['ema_short'] = df['value'].ewm(span=span_short, adjust=False).mean()
     df['ema_long'] = df['value'].ewm(span=span_long, adjust=False).mean()
@@ -73,19 +150,18 @@ def calculate_macd(df, span_short=12, span_long=26, span_signal=9):
     df['macd_histogram'] = df['macd'] - df['macd_signal']
     return df
 
-# Calculate Dynamic Thresholds
+
 def calculate_dynamic_thresholds(df, base_bull_threshold=60, base_bear_threshold=40):
     market_volatility = df['std'].rolling(window=20).mean()
     df['rsi_bull_threshold'] = base_bull_threshold - (market_volatility * 0.5)
     df['rsi_bear_threshold'] = base_bear_threshold + (market_volatility * 0.5)
     return df
 
-# Check for Higher Lows in Bullish Divergence and Lower Highs in Bearish Divergence
-def detect_higher_lows_lower_highs(df, i):
-    """
+"""
     Checks for higher low and lower high patterns.
     Returns (higher_low, lower_high) as a tuple.
-    """
+"""
+def detect_higher_lows_lower_highs(df, i):
     higher_low = lower_high = False
     
     # Ensure there's enough data to check patterns
@@ -99,7 +175,17 @@ def detect_higher_lows_lower_highs(df, i):
     
     return (higher_low, lower_high)  # Return as tuple
 
-# Detect Divergences with Enhanced Logic
+"""
+    Detect bullish and bearish divergences in the RSI.
+
+    Parameters:
+    df (DataFrame): The dataframe containing the 'value' and 'rsi' columns.
+    rsi_bull_threshold (int): RSI value above which bullish divergence may occur.
+    rsi_bear_threshold (int): RSI value below which bearish divergence may occur.
+
+    Returns:
+    list: List of divergences in the format (timestamp, type, value, confidence).
+"""
 def detect_divergences(df, rsi_bull_threshold=60, rsi_bear_threshold=40, window=10):
     divergences = []
 
@@ -127,6 +213,23 @@ def detect_divergences(df, rsi_bull_threshold=60, rsi_bear_threshold=40, window=
     
     return divergences
 
+"""
+    Calculates the confidence score for a divergence pattern between price and RSI.
+    The confidence score is based on three factors: price movement, RSI thresholds, 
+    and historical price significance (via Z-score).
+    
+    Arguments:
+    df -- The dataframe containing the price ('value') and RSI ('rsi') data.
+    i -- The current index in the dataframe for which confidence is calculated.
+    rsi_bull_threshold -- The RSI threshold above which the market is considered bullish.
+    rsi_bear_threshold -- The RSI threshold below which the market is considered bearish.
+    window -- The window size used for calculating the historical price confidence (Z-score).
+
+    Returns:
+    confidence_percentage -- The final confidence score as a percentage (0-100) based on the 
+                              magnitude of price movement, RSI deviation, and historical price 
+                              confidence.
+"""
 def calculate_divergence_confidence(df, i, rsi_bull_threshold, rsi_bear_threshold, window):
     # Price movement and RSI differences
     price_diff = abs(df['value'][i] - df['value'][i-1])
@@ -154,11 +257,11 @@ def calculate_divergence_confidence(df, i, rsi_bull_threshold, rsi_bear_threshol
     
     return confidence_percentage
 
-def calculate_price_confidence(df, i, window):
-    """
+"""
     Calculate the price confidence based on a Z-score over a window.
     This method evaluates how extreme the current price is relative to the historical values.
-    """
+"""
+def calculate_price_confidence(df, i, window):
     # Ensure there's enough data to calculate a window-based Z-score
     if i >= window:
         # Historical price values for the last `window` days
@@ -180,12 +283,25 @@ def calculate_price_confidence(df, i, window):
     else:
         return 0  # Return 0 if there's insufficient data to calculate price confidence
 
-
+"""
+    Filters and returns divergences that occurred within the last 5 days.
+"""
 def divergence_within_5_days(divergences):
     today = dt.datetime.now()
     recent_divergences = [(d[0], d[1], d[3]) for d in divergences if (today - pd.to_datetime(d[0])).days <= 5]
     return recent_divergences
 
+
+"""
+    Plot the Fear and Greed Index with Bollinger Bands, MACD, and RSI.
+
+    Parameters:
+    df (DataFrame): The dataframe containing the historical data.
+    divergences (list): List of detected divergences to annotate on the chart.
+
+    Returns:
+    BytesIO: The chart image in memory for sending via Telegram.
+"""
 def plot_chart(df, divergences):
     plt.figure(figsize=(12, 8))
     
