@@ -19,10 +19,8 @@ try:
     # First, check for the key in environment variables (e.g., from GitHub Actions)
     TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
     TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
-    if TELEGRAM_BOT_TOKEN == "7898328289:AAGJF0EUAxizLb9I19QFOmXK8c0TM2rlnqI":
-        print("True")
-    if TELEGRAM_CHAT_ID == "-4520793526":
-        print("2True")
+
+    print("Telegram Bot Key found in environment variables.")
     
 except KeyError:
     # If not found, try to load it from the .env file
@@ -350,13 +348,13 @@ def main():
     df = calculate_dynamic_thresholds(df)
 
     divergences = detect_divergences(df)
-
+    print("Complete calculation")
     recent_divergences = divergence_within_5_days(divergences)
     if recent_divergences:
         divergence_msg = "Divergences within last 5 days:\n" + \
                          "\n".join([f"{d[1]} on {d[0].date()} - Confidence: {int(d[2])}%" for d in recent_divergences])
         send_telegram_message(divergence_msg)
-
+    print("Sending telegram message")
     image_bytes = plot_chart(df, divergences)
     send_telegram_image(image_bytes)
 
