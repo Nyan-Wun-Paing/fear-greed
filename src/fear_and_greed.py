@@ -357,7 +357,6 @@ def main():
     print("Sending telegram message")
     image_bytes = plot_chart(df, divergences)
     send_telegram_image(image_bytes)
-    print("Ended")
 
 if __name__ == "__main__":
     main()
